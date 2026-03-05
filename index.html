@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ScriptHub — Seus Scripts Exclusivos</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root {
     --bg: #060810;
@@ -840,17 +841,13 @@
       <div class="modal-icon">🔐</div>
       <div>
         <div class="modal-title">Acesso Admin</div>
-        <div class="modal-subtitle">Login com seu Gmail autorizado</div>
+        <div class="modal-subtitle">Login com Google autorizado</div>
       </div>
     </div>
-    <div class="form-group">
-      <label class="form-label">Seu Gmail</label>
-      <input type="email" class="form-input" id="loginEmail" placeholder="seuemail@gmail.com" onkeydown="if(event.key==='Enter')doLogin()" />
+    <div style="display:flex; justify-content:center; margin: 20px 0;">
+      <div id="googleSignInBtn"></div>
     </div>
-    <div class="modal-actions">
-      <button class="btn btn-primary" onclick="doLogin()">Entrar</button>
-    </div>
-    <p style="margin-top:14px; font-size:0.75rem; color:var(--text-muted); text-align:center; font-family:'Share Tech Mono',monospace;">Apenas o email cadastrado tem acesso</p>
+    <p style="margin-top:14px; font-size:0.75rem; color:var(--text-muted); text-align:center; font-family:'Share Tech Mono',monospace;">Apenas a conta autorizada tem acesso</p>
   </div>
 </div>
 
@@ -1015,28 +1012,39 @@ function filterScripts(q) {
   ));
 }
 
-// ===================== AUTH — Google =====================
-function openLogin() {
-  // Google OAuth popup
-  const clientId = 'GOOGLE_CLIENT_ID'; // substituir pelo seu Client ID
-  const redirect = encodeURIComponent(window.location.href.split('?')[0]);
-  const scope = encodeURIComponent('email profile');
-  const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirect}&response_type=token&scope=${scope}`;
-  window._googleAuthWin = window.open(url, 'googleauth', 'width=500,height=600,left=200,top=100');
+// ===================== AUTH — Google OAuth (GSI) =====================
+const GOOGLE_CLIENT_ID = '1093719005537-94uksn8o71iji3d9eclklge7hv5f5n28.apps.googleusercontent.com';
 
-  // fallback: manual email entry (para uso local/GitHub Pages sem OAuth configurado)
+function openLogin() {
   openOverlay('loginOverlay');
+  setTimeout(() => {
+    const container = document.getElementById('googleSignInBtn');
+    if (container && typeof google !== 'undefined') {
+      container.innerHTML = '';
+      google.accounts.id.renderButton(container, {
+        theme: 'filled_black',
+        size: 'large',
+        text: 'signin_with',
+        shape: 'rectangular',
+        width: 280
+      });
+    }
+  }, 150);
 }
 
-function doLogin() {
-  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
-  if (email === ADMIN_EMAIL) {
-    activateAdmin();
-    closeOverlay('loginOverlay');
-    showToast('✅ Bem-vindo, Admin!');
-  } else {
-    showToast('❌ Email não autorizado');
-    document.getElementById('loginEmail').value = '';
+function handleGoogleCredential(response) {
+  try {
+    const payload = JSON.parse(atob(response.credential.split('.')[1]));
+    const email = (payload.email || '').toLowerCase();
+    if (email === ADMIN_EMAIL) {
+      closeOverlay('loginOverlay');
+      activateAdmin();
+      showToast('✅ Bem-vindo, ' + (payload.given_name || 'Admin') + '!');
+    } else {
+      showToast('❌ Conta não autorizada');
+    }
+  } catch(e) {
+    showToast('❌ Erro ao verificar login');
   }
 }
 
@@ -1054,6 +1062,7 @@ function activateAdmin() {
 
 function logout() {
   isAdmin = false;
+  if (typeof google !== 'undefined') google.accounts.id.disableAutoSelect();
   document.getElementById('loginBtn').style.display = '';
   document.getElementById('logoutBtn').style.display = 'none';
   document.getElementById('adminIndicator').style.display = 'none';
@@ -1063,6 +1072,17 @@ function logout() {
   showToast('👋 Sessão encerrada');
   refresh();
 }
+
+window.addEventListener('load', () => {
+  if (typeof google !== 'undefined') {
+    google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: handleGoogleCredential,
+      auto_select: false,
+      cancel_on_tap_outside: true
+    });
+  }
+});
 
 // ===================== ADD/EDIT =====================
 function openAddScript() {
