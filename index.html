@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PatoScripts — Scripts Exclusivos</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCErKO-b_jOVzTOZ7UMTOZr0JFCLkZMv-U",
+    authDomain: "patoscripts-ac71e.firebaseapp.com",
+    projectId: "patoscripts-ac71e",
+    storageBucket: "patoscripts-ac71e.firebasestorage.app",
+    messagingSenderId: "503837610847",
+    appId: "1:503837610847:web:8bb06935df55ca8a559cea"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  // Expõe funções pro window
+  window._db = db;
+  window._col = collection;
+  window._addDoc = addDoc;
+  window._updateDoc = updateDoc;
+  window._deleteDoc = deleteDoc;
+  window._doc = doc;
+  window._onSnapshot = onSnapshot;
+  window._setDoc = setDoc;
+  window._getDoc = getDoc;
+  window._firebaseReady = true;
+  window.dispatchEvent(new Event('firebaseReady'));
+</script>
+<style>
+  :root {
+    --bg: #060810;
+    --surface: #0d1117;
+    --surface2: #161b22;
+    --border: #21262d;
+    --accent: #00f5a0;
+    --accent2: #00d9f5;
+    --danger: #ff4757;
+    --text: #e6edf3;
+    --text-muted: #7d8590;
+    --glow: 0 0 20px rgba(0,245,160,0.4);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: 'Rajdhani', sans-serif; min-height: 100vh; overflow-x: hidden; }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image: linear-gradient(rgba(0,245,160,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,245,160,0.03) 1px, transparent 1px);
+    background-size: 40px 40px; pointer-events: none; z-index: 0;
+  }
+  body::after {
+    content: ''; position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px);
+    pointer-events: none; z-index: 0;
+  }
+
+  /* NAV */
+  nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 16px 40px; background: rgba(6,8,16,0.9); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(0,245,160,0.15); }
+  .logo { font-family: 'Orbitron', monospace; font-size: 1.4rem; font-weight: 900; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: 2px; }
+  .logo span { font-weight: 400; opacity: 0.6; }
+  .nav-right { display: flex; gap: 12px; align-items: center; }
+
+  /* BUTTONS */
+  .btn { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.85rem; letter-spacing: 1.5px; text-transform: uppercase; padding: 8px 20px; border-radius: 4px; cursor: pointer; border: none; transition: all 0.2s; }
+  .btn-outline { background: transparent; border: 1px solid var(--accent); color: var(--accent); }
+  .btn-outline:hover { background: var(--accent); color: var(--bg); box-shadow: var(--glow); }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: var(--bg); }
+  .btn-primary:hover { opacity: 0.85; box-shadow: var(--glow); transform: translateY(-1px); }
+  .btn-danger { background: var(--danger); color: white; }
+  .btn-danger:hover { opacity: 0.8; }
+
+  /* ADMIN BAR */
+  .admin-bar { display: none; position: fixed; top: 72px; left: 0; right: 0; z-index: 99; background: rgba(0,245,160,0.08); border-bottom: 1px solid rgba(0,245,160,0.3); padding: 10px 40px; align-items: center; justify-content: space-between; font-family: 'Share Tech Mono', monospace; font-size: 0.8rem; color: var(--accent); }
+  .admin-bar.visible { display: flex; }
+  .admin-bar-right { display: flex; gap: 12px; align-items: center; }
+
+  /* MAINTENANCE TOGGLE */
+  .maint-wrap { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 4px 12px; border: 1px solid rgba(0,245,160,0.2); border-radius: 20px; transition: border-color 0.2s; }
+  .maint-wrap:hover { border-color: rgba(0,245,160,0.5); }
+  .maint-track { width: 36px; height: 20px; background: #21262d; border-radius: 10px; position: relative; transition: background 0.3s; }
+  .maint-track::after { content: ''; position: absolute; width: 14px; height: 14px; background: #7d8590; border-radius: 50%; top: 3px; left: 3px; transition: all 0.3s; }
+  .maint-track.on { background: rgba(255,71,87,0.3); border: 1px solid #ff4757; }
+  .maint-track.on::after { left: 19px; background: #ff4757; }
+
+  /* HERO */
+  .hero { position: relative; z-index: 1; padding: 160px 40px 80px; text-align: center; }
+  .hero-badge { display: inline-block; font-family: 'Share Tech Mono', monospace; font-size: 0.75rem; color: var(--accent); border: 1px solid rgba(0,245,160,0.3); padding: 4px 14px; border-radius: 20px; margin-bottom: 24px; letter-spacing: 2px; animation: pulse-border 2s infinite; }
+  @keyframes pulse-border { 0%,100% { border-color: rgba(0,245,160,0.3); } 50% { border-color: rgba(0,245,160,0.8); box-shadow: var(--glow); } }
+  .hero h1 { font-family: 'Orbitron', monospace; font-size: clamp(2.5rem,6vw,5rem); font-weight: 900; line-height: 1.1; margin-bottom: 20px; }
+  .hero h1 .line1 { display: block; background: linear-gradient(135deg,#fff 30%,var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .hero h1 .line2 { display: block; background: linear-gradient(135deg,var(--accent),var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .hero p { font-size: 1.2rem; color: var(--text-muted); max-width: 500px; margin: 0 auto 40px; line-height: 1.6; }
+  .stats-bar { display: flex; justify-content: center; gap: 60px; margin-top: 60px; }
+  .stat-num { font-family: 'Orbitron', monospace; font-size: 2rem; font-weight: 700; color: var(--accent); }
+  .stat-label { font-size: 0.8rem; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; margin-top: 4px; }
+
+  /* CONTAINER */
+  .container { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; padding: 0 40px 80px; }
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; }
+  .section-title { font-family: 'Orbitron', monospace; font-size: 1rem; font-weight: 700; color: var(--text-muted); letter-spacing: 3px; text-transform: uppercase; }
+
+  /* SEARCH */
+  .search-wrap { position: relative; max-width: 320px; }
+  .search-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px 8px 36px; color: var(--text); font-family: 'Rajdhani', sans-serif; font-size: 0.9rem; outline: none; transition: border-color 0.2s; }
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--text-muted); }
+  .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.85rem; pointer-events: none; }
+
+  /* GRID */
+  .scripts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; }
+
+  /* CARD */
+  .script-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 24px; position: relative; overflow: hidden; transition: all 0.3s; cursor: pointer; animation: fadeInUp 0.5s ease both; }
+  @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  .script-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--accent), var(--accent2)); opacity: 0; transition: opacity 0.3s; }
+  .script-card:hover { border-color: rgba(0,245,160,0.3); transform: translateY(-4px); box-shadow: 0 8px 32px rgba(0,0,0,0.4), var(--glow); }
+  .script-card:hover::before { opacity: 1; }
+  .card-tag { display: inline-block; font-family: 'Share Tech Mono', monospace; font-size: 0.65rem; letter-spacing: 1.5px; text-transform: uppercase; padding: 3px 10px; border-radius: 3px; margin-bottom: 12px; }
+  .tag-free { background: rgba(0,245,160,0.1); color: var(--accent); border: 1px solid rgba(0,245,160,0.2); }
+  .tag-vip { background: rgba(255,215,0,0.1); color: #ffd700; border: 1px solid rgba(255,215,0,0.2); }
+  .tag-new { background: rgba(0,217,245,0.1); color: var(--accent2); border: 1px solid rgba(0,217,245,0.2); }
+  .card-title { font-family: 'Orbitron', monospace; font-size: 1rem; font-weight: 700; margin-bottom: 8px; }
+  .card-desc { font-size: 0.9rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px; }
+  .card-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 16px; border-top: 1px solid var(--border); }
+  .card-date { font-family: 'Share Tech Mono', monospace; font-size: 0.7rem; color: var(--text-muted); }
+  .copy-btn { font-family: 'Rajdhani', sans-serif; font-size: 0.8rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 6px 16px; border-radius: 4px; border: 1px solid var(--accent); background: transparent; color: var(--accent); cursor: pointer; transition: all 0.2s; }
+  .copy-btn:hover, .copy-btn.copied { background: var(--accent); color: var(--bg); box-shadow: var(--glow); }
+  .card-admin-actions { display: none; position: absolute; top: 12px; right: 12px; gap: 6px; }
+  .admin-mode .card-admin-actions { display: flex; }
+  .card-act-btn { width: 28px; height: 28px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface2); cursor: pointer; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; transition: all 0.2s; color: var(--text-muted); }
+  .card-act-btn:hover { border-color: var(--danger); color: var(--danger); }
+  .card-act-btn.edit:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  /* EMPTY */
+  .empty-state { grid-column: 1/-1; text-align: center; padding: 80px 20px; color: var(--text-muted); }
+  .empty-icon { font-size: 3rem; margin-bottom: 16px; opacity: 0.3; }
+  .empty-state h3 { font-family: 'Orbitron', monospace; font-size: 1rem; margin-bottom: 8px; }
+
+  /* LOADING */
+  .loading-state { grid-column: 1/-1; text-align: center; padding: 80px 20px; }
+  .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ADMIN FAB */
+  .admin-fab-wrap { display: none; position: fixed; bottom: 24px; right: 24px; z-index: 150; }
+  .admin-fab-wrap.visible { display: block; }
+  .admin-fab { width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent2)); border: none; cursor: pointer; font-size: 1.4rem; display: flex; align-items: center; justify-content: center; box-shadow: var(--glow); transition: transform 0.2s; }
+  .admin-fab:hover { transform: scale(1.1) rotate(15deg); }
+
+  /* OVERLAY */
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(6,8,16,0.85); backdrop-filter: blur(8px); z-index: 200; align-items: center; justify-content: center; }
+  .overlay.active { display: flex; }
+  .modal { background: var(--surface); border: 1px solid rgba(0,245,160,0.2); border-radius: 12px; width: 90%; max-width: 560px; padding: 36px; position: relative; box-shadow: 0 24px 80px rgba(0,0,0,0.6), var(--glow); animation: modalIn 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+  @keyframes modalIn { from { opacity: 0; transform: scale(0.9) translateY(20px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+  .modal-close { position: absolute; top: 16px; right: 16px; width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .modal-close:hover { border-color: var(--danger); color: var(--danger); }
+  .modal-top { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+  .modal-icon { width: 40px; height: 40px; border-radius: 8px; background: linear-gradient(135deg, var(--accent), var(--accent2)); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+  .modal-title { font-family: 'Orbitron', monospace; font-size: 1.1rem; font-weight: 700; }
+  .modal-subtitle { font-size: 0.85rem; color: var(--text-muted); margin-top: 2px; }
+  .form-group { margin-bottom: 18px; }
+  .form-label { display: block; font-size: 0.8rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; font-family: 'Share Tech Mono', monospace; }
+  .form-input, .form-textarea, .form-select { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 12px 16px; color: var(--text); font-family: 'Rajdhani', sans-serif; font-size: 0.95rem; transition: border-color 0.2s; outline: none; }
+  .form-input:focus, .form-textarea:focus, .form-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,245,160,0.1); }
+  .form-textarea { min-height: 100px; resize: vertical; font-family: 'Share Tech Mono', monospace; font-size: 0.8rem; line-height: 1.6; }
+  .form-select option { background: var(--surface2); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .modal-actions { display: flex; gap: 12px; margin-top: 24px; }
+  .modal-actions .btn { flex: 1; padding: 12px; font-size: 0.9rem; }
+
+  /* SCRIPT VIEW */
+  .script-code-block { background: #0a0e16; border: 1px solid rgba(0,245,160,0.2); border-radius: 8px; padding: 20px; font-family: 'Share Tech Mono', monospace; font-size: 0.8rem; color: var(--accent); line-height: 1.6; word-break: break-all; overflow-x: auto; max-height: 200px; overflow-y: auto; margin: 16px 0; white-space: pre-wrap; }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--surface); border: 1px solid var(--accent); border-radius: 8px; padding: 12px 24px; font-family: 'Share Tech Mono', monospace; font-size: 0.85rem; color: var(--accent); z-index: 300; transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1); box-shadow: var(--glow); }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* MAINTENANCE */
+  #maintenanceScreen { display: none; position: fixed; inset: 0; z-index: 9999; background: #060810; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px; }
+  .maint-icon { font-size: 4rem; margin-bottom: 24px; animation: spin 4s linear infinite; display: inline-block; }
+  .maint-title { font-family: 'Orbitron', monospace; font-size: 1.8rem; font-weight: 900; background: linear-gradient(135deg,#00f5a0,#00d9f5); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 16px; }
+  .maint-desc { color: #7d8590; font-size: 1rem; max-width: 400px; line-height: 1.6; }
+  .maint-badge { margin-top: 40px; border: 1px solid rgba(0,245,160,0.2); border-radius: 8px; padding: 16px 28px; font-family: 'Share Tech Mono', monospace; font-size: 0.75rem; color: rgba(0,245,160,0.6); letter-spacing: 2px; }
+
+  footer { position: relative; z-index: 1; text-align: center; padding: 40px; border-top: 1px solid var(--border); font-family: 'Share Tech Mono', monospace; font-size: 0.75rem; color: var(--text-muted); }
+  footer span { color: var(--accent); }
+
+  @media (max-width: 600px) {
+    nav { padding: 14px 20px; }
+    .hero { padding: 130px 20px 60px; }
+    .container { padding: 0 20px 60px; }
+    .stats-bar { gap: 30px; }
+    .form-row { grid-template-columns: 1fr; }
+    .scripts-grid { grid-template-columns: 1fr; }
+    .admin-bar { padding: 10px 20px; flex-direction: column; gap: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- MAINTENANCE SCREEN -->
+<div id="maintenanceScreen">
+  <span class="maint-icon">⚙️</span>
+  <div class="maint-title">EM MANUTENÇÃO</div>
+  <p class="maint-desc">O site está temporariamente fora do ar para melhorias. Volte em breve! 🚀</p>
+  <div class="maint-badge">PATOSCRIPTS — EM BREVE DE VOLTA</div>
+</div>
+
+<!-- NAVBAR -->
+<nav>
+  <div class="logo">PATO<span>SCRIPTS</span></div>
+  <div class="nav-right">
+    <span id="adminIndicator" style="display:none; font-family:'Share Tech Mono',monospace; font-size:0.7rem; color:var(--accent); border:1px solid rgba(0,245,160,0.3); padding:4px 10px; border-radius:3px;">● ADMIN</span>
+    <button class="btn btn-outline" onclick="openLogin()" id="loginBtn">Admin</button>
+    <button class="btn btn-danger" onclick="logout()" id="logoutBtn" style="display:none;">Sair</button>
+  </div>
+</nav>
+
+<!-- ADMIN BAR -->
+<div class="admin-bar" id="adminBar">
+  <span>⚡ MODO ADMINISTRADOR ATIVO</span>
+  <div class="admin-bar-right">
+    <div class="maint-wrap" onclick="toggleMaintenance()">
+      <div class="maint-track" id="maintTrack"></div>
+      <span id="maintLabel" style="font-family:'Share Tech Mono',monospace; font-size:0.75rem; cursor:pointer;">MANUTENÇÃO: OFF</span>
+    </div>
+    <button class="btn btn-primary" onclick="openAddScript()">+ Novo Script</button>
+  </div>
+</div>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">● SCRIPTS EXCLUSIVOS</div>
+  <h1>
+    <span class="line1">SEUS SCRIPTS</span>
+    <span class="line2">ESTÃO AQUI</span>
+  </h1>
+  <p>Scripts em loadstring prontos para usar. Atualizados constantemente para você e seus seguidores.</p>
+  <div class="stats-bar">
+    <div class="stat"><div class="stat-num" id="totalScripts">0</div><div class="stat-label">Scripts</div></div>
+    <div class="stat"><div class="stat-num" id="freeCount">0</div><div class="stat-label">Gratuitos</div></div>
+    <div class="stat"><div class="stat-num" id="vipCount">0</div><div class="stat-label">VIP</div></div>
+  </div>
+</section>
+
+<!-- CONTENT -->
+<div class="container">
+  <div class="section-header">
+    <div class="section-title">// Scripts Disponíveis</div>
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" class="search-input" placeholder="Buscar script..." oninput="filterScripts(this.value)" />
+    </div>
+  </div>
+  <div class="scripts-grid" id="scriptsGrid">
+    <div class="loading-state"><div class="spinner"></div><p style="color:var(--text-muted); font-family:'Share Tech Mono',monospace; font-size:0.8rem;">Carregando scripts...</p></div>
+  </div>
+</div>
+
+<footer>Feito com ❤️ — <span>PatoScripts</span> &copy; 2025</footer>
+
+<!-- ADMIN FAB -->
+<div class="admin-fab-wrap" id="adminFab">
+  <button class="admin-fab" onclick="openAddScript()">＋</button>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- LOGIN MODAL -->
+<div class="overlay" id="loginOverlay" onclick="closeOverlay('loginOverlay')">
+  <div class="modal" style="max-width:400px;" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeOverlay('loginOverlay')">✕</button>
+    <div class="modal-top">
+      <div class="modal-icon">🔐</div>
+      <div>
+        <div class="modal-title">Acesso Admin</div>
+        <div class="modal-subtitle">Login com Google autorizado</div>
+      </div>
+    </div>
+    <div style="display:flex; justify-content:center; margin:20px 0;" id="googleSignInBtn"></div>
+    <p style="margin-top:8px; font-size:0.75rem; color:var(--text-muted); text-align:center; font-family:'Share Tech Mono',monospace;">Apenas a conta autorizada tem acesso</p>
+  </div>
+</div>
+
+<!-- ADD/EDIT SCRIPT MODAL -->
+<div class="overlay" id="scriptFormOverlay" onclick="closeOverlay('scriptFormOverlay')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeOverlay('scriptFormOverlay')">✕</button>
+    <div class="modal-top">
+      <div class="modal-icon">📝</div>
+      <div>
+        <div class="modal-title" id="formModalTitle">Novo Script</div>
+        <div class="modal-subtitle">Preencha os detalhes do script</div>
+      </div>
+    </div>
+    <input type="hidden" id="editingId" value="" />
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Nome do Script</label><input type="text" class="form-input" id="fName" placeholder="Ex: Auto Farm v2" /></div>
+      <div class="form-group"><label class="form-label">Jogo / Categoria</label><input type="text" class="form-input" id="fGame" placeholder="Ex: Blox Fruits" /></div>
+    </div>
+    <div class="form-group"><label class="form-label">Descrição</label><input type="text" class="form-input" id="fDesc" placeholder="Breve descrição do que o script faz" /></div>
+    <div class="form-group"><label class="form-label">Loadstring / Código</label><textarea class="form-textarea" id="fCode" placeholder='loadstring(game:HttpGet("https://..."))()&#10;-- cole seu script aqui'></textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Tipo</label><select class="form-select" id="fType"><option value="free">Gratuito</option><option value="vip">VIP</option><option value="new">Novo</option></select></div>
+      <div class="form-group"><label class="form-label">Versão</label><input type="text" class="form-input" id="fVersion" placeholder="v1.0" /></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeOverlay('scriptFormOverlay')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveScript()">Salvar Script</button>
+    </div>
+  </div>
+</div>
+
+<!-- SCRIPT VIEW MODAL -->
+<div class="overlay" id="scriptViewOverlay" onclick="closeOverlay('scriptViewOverlay')">
+  <div class="modal" style="max-width:680px;" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeOverlay('scriptViewOverlay')">✕</button>
+    <div class="modal-top">
+      <div class="modal-icon">⚡</div>
+      <div>
+        <div class="modal-title" id="viewName"></div>
+        <div class="modal-subtitle" id="viewGame"></div>
+      </div>
+    </div>
+    <p id="viewDesc" style="color:var(--text-muted); font-size:0.95rem; margin-bottom:8px;"></p>
+    <div class="script-code-block" id="viewCode"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeOverlay('scriptViewOverlay')">Fechar</button>
+      <button class="btn btn-primary" onclick="copyViewCode()">📋 Copiar Script</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM -->
+<div class="overlay" id="deleteOverlay" onclick="closeOverlay('deleteOverlay')">
+  <div class="modal" style="max-width:400px;" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeOverlay('deleteOverlay')">✕</button>
+    <div class="modal-top">
+      <div class="modal-icon" style="background:linear-gradient(135deg,var(--danger),#ff6b81);">🗑️</div>
+      <div><div class="modal-title">Excluir Script</div><div class="modal-subtitle">Esta ação não pode ser desfeita</div></div>
+    </div>
+    <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:24px;">Tem certeza que deseja excluir <strong id="deleteScriptName" style="color:var(--text);"></strong>?</p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeOverlay('deleteOverlay')">Cancelar</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const ADMIN_EMAIL = 'davinoobplay@gmail.com';
+const GOOGLE_CLIENT_ID = '1093719005537-94uksn8o71iji3d9eclklge7hv5f5n28.apps.googleusercontent.com';
+
+let isAdmin = false;
+let scripts = [];
+let deleteTarget = null;
+let currentViewCode = '';
+let db, col, addDoc, updateDoc, deleteDoc, docRef, onSnapshot, setDoc, getDoc;
+
+// ===================== FIREBASE INIT =====================
+function initFirebase() {
+  db = window._db;
+  col = window._col;
+  addDoc = window._addDoc;
+  updateDoc = window._updateDoc;
+  deleteDoc = window._deleteDoc;
+  docRef = window._doc;
+  onSnapshot = window._onSnapshot;
+  setDoc = window._setDoc;
+  getDoc = window._getDoc;
+
+  // Ouve scripts em tempo real
+  onSnapshot(col(db, 'scripts'), (snapshot) => {
+    scripts = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    scripts.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    renderScripts(scripts);
+  });
+
+  // Ouve modo manutenção em tempo real
+  onSnapshot(docRef(db, 'config', 'maintenance'), (snap) => {
+    const on = snap.exists() && snap.data().active === true;
+    updateMaintenanceUI(on);
+    if (on && !isAdmin) {
+      document.getElementById('maintenanceScreen').style.display = 'flex';
+    } else {
+      document.getElementById('maintenanceScreen').style.display = 'none';
+    }
+  });
+}
+
+if (window._firebaseReady) {
+  initFirebase();
+} else {
+  window.addEventListener('firebaseReady', initFirebase);
+}
+
+// ===================== RENDER =====================
+function renderScripts(list) {
+  const grid = document.getElementById('scriptsGrid');
+  const filtered = currentSearch ? list.filter(s =>
+    s.name?.toLowerCase().includes(currentSearch) ||
+    s.game?.toLowerCase().includes(currentSearch) ||
+    s.desc?.toLowerCase().includes(currentSearch)
+  ) : list;
+
+  document.getElementById('totalScripts').textContent = list.length;
+  document.getElementById('freeCount').textContent = list.filter(s => s.type === 'free').length;
+  document.getElementById('vipCount').textContent = list.filter(s => s.type === 'vip').length;
+
+  if (filtered.length === 0) {
+    grid.innerHTML = `<div class="empty-state"><div class="empty-icon">📂</div><h3>Nenhum script encontrado</h3><p style="font-size:0.85rem; margin-top:6px;">${isAdmin ? 'Clique em <strong style="color:var(--accent)">+ Novo Script</strong> para adicionar.' : 'Em breve novos scripts serão adicionados!'}</p></div>`;
+    return;
+  }
+
+  const tagMap = { free: 'tag-free', vip: 'tag-vip', new: 'tag-new' };
+  const tagLabel = { free: 'Gratuito', vip: 'VIP', new: 'Novo' };
+
+  grid.innerHTML = filtered.map((s, i) => `
+    <div class="script-card" style="animation-delay:${(i%6)*0.06}s" onclick="openView('${s.id}')">
+      <div class="card-admin-actions">
+        <button class="card-act-btn edit" onclick="event.stopPropagation(); openEditScript('${s.id}')" title="Editar">✏️</button>
+        <button class="card-act-btn" onclick="event.stopPropagation(); openDelete('${s.id}')" title="Excluir">🗑️</button>
+      </div>
+      <div>
+        <span class="card-tag ${tagMap[s.type] || 'tag-free'}">${tagLabel[s.type] || 'Gratuito'}</span>
+        ${s.game ? `<span style="margin-left:6px;font-family:'Share Tech Mono',monospace;font-size:0.65rem;color:var(--text-muted);letter-spacing:1px;text-transform:uppercase;">${s.game}</span>` : ''}
+      </div>
+      <div class="card-title">${s.name}</div>
+      <div class="card-desc">${s.desc || 'Sem descrição.'}</div>
+      <div class="card-footer">
+        <span class="card-date">${s.version ? s.version + ' · ' : ''}${s.date || ''}</span>
+        <button class="copy-btn" id="copybtn-${s.id}" onclick="event.stopPropagation(); quickCopy('${s.id}')">Copiar</button>
+      </div>
+    </div>`).join('');
+}
+
+// ===================== SEARCH =====================
+let currentSearch = '';
+function filterScripts(q) {
+  currentSearch = q.toLowerCase();
+  renderScripts(scripts);
+}
+
+// ===================== AUTH — Google =====================
+function openLogin() {
+  openOverlay('loginOverlay');
+  setTimeout(() => {
+    const container = document.getElementById('googleSignInBtn');
+    if (container && typeof google !== 'undefined') {
+      container.innerHTML = '';
+      google.accounts.id.renderButton(container, {
+        theme: 'filled_black', size: 'large', text: 'signin_with', shape: 'rectangular', width: 280
+      });
+    }
+  }, 150);
+}
+
+function handleGoogleCredential(response) {
+  try {
+    const payload = JSON.parse(atob(response.credential.split('.')[1]));
+    const email = (payload.email || '').toLowerCase();
+    if (email === ADMIN_EMAIL) {
+      closeOverlay('loginOverlay');
+      activateAdmin();
+      showToast('✅ Bem-vindo, ' + (payload.given_name || 'Admin') + '!');
+    } else {
+      showToast('❌ Conta não autorizada');
+    }
+  } catch(e) { showToast('❌ Erro ao verificar login'); }
+}
+
+function activateAdmin() {
+  isAdmin = true;
+  document.getElementById('loginBtn').style.display = 'none';
+  document.getElementById('logoutBtn').style.display = '';
+  document.getElementById('adminIndicator').style.display = '';
+  document.getElementById('adminBar').classList.add('visible');
+  document.getElementById('adminFab').classList.add('visible');
+  document.getElementById('scriptsGrid').classList.add('admin-mode');
+  // Admin nunca vê tela de manutenção
+  document.getElementById('maintenanceScreen').style.display = 'none';
+  renderScripts(scripts);
+}
+
+function logout() {
+  isAdmin = false;
+  if (typeof google !== 'undefined') google.accounts.id.disableAutoSelect();
+  document.getElementById('loginBtn').style.display = '';
+  document.getElementById('logoutBtn').style.display = 'none';
+  document.getElementById('adminIndicator').style.display = 'none';
+  document.getElementById('adminBar').classList.remove('visible');
+  document.getElementById('adminFab').classList.remove('visible');
+  document.getElementById('scriptsGrid').classList.remove('admin-mode');
+  showToast('👋 Sessão encerrada');
+  renderScripts(scripts);
+}
+
+window.addEventListener('load', () => {
+  if (typeof google !== 'undefined') {
+    google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleGoogleCredential, auto_select: false });
+  }
+});
+
+// ===================== MAINTENANCE =====================
+function updateMaintenanceUI(active) {
+  const track = document.getElementById('maintTrack');
+  const lbl = document.getElementById('maintLabel');
+  if (!track) return;
+  track.classList.toggle('on', active);
+  lbl.textContent = active ? 'MANUTENÇÃO: ON' : 'MANUTENÇÃO: OFF';
+}
+
+async function toggleMaintenance() {
+  if (!isAdmin || !db) return;
+  try {
+    const ref = docRef(db, 'config', 'maintenance');
+    const snap = await getDoc(ref);
+    const current = snap.exists() && snap.data().active === true;
+    await setDoc(ref, { active: !current });
+    showToast(!current ? '🔧 Manutenção ativada para todos!' : '✅ Site voltou ao normal!');
+  } catch(e) { showToast('❌ Erro ao alterar manutenção'); }
+}
+
+// ===================== ADD/EDIT SCRIPT =====================
+function openAddScript() {
+  if (!isAdmin) return;
+  document.getElementById('formModalTitle').textContent = 'Novo Script';
+  document.getElementById('editingId').value = '';
+  ['fName','fGame','fDesc','fCode','fVersion'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('fType').value = 'free';
+  openOverlay('scriptFormOverlay');
+}
+
+function openEditScript(id) {
+  if (!isAdmin) return;
+  const s = scripts.find(x => x.id === id);
+  if (!s) return;
+  document.getElementById('formModalTitle').textContent = 'Editar Script';
+  document.getElementById('editingId').value = id;
+  document.getElementById('fName').value = s.name || '';
+  document.getElementById('fGame').value = s.game || '';
+  document.getElementById('fDesc').value = s.desc || '';
+  document.getElementById('fCode').value = s.code || '';
+  document.getElementById('fType').value = s.type || 'free';
+  document.getElementById('fVersion').value = s.version || '';
+  openOverlay('scriptFormOverlay');
+}
+
+async function saveScript() {
+  const name = document.getElementById('fName').value.trim();
+  const code = document.getElementById('fCode').value.trim();
+  if (!name || !code) { showToast('❌ Nome e código são obrigatórios'); return; }
+
+  const data = {
+    name,
+    game: document.getElementById('fGame').value.trim(),
+    desc: document.getElementById('fDesc').value.trim(),
+    code,
+    type: document.getElementById('fType').value,
+    version: document.getElementById('fVersion').value.trim(),
+    date: new Date().toLocaleDateString('pt-BR'),
+    createdAt: Date.now()
+  };
+
+  const editId = document.getElementById('editingId').value;
+  try {
+    if (editId) {
+      await updateDoc(docRef(db, 'scripts', editId), data);
+      showToast('✏️ Script atualizado!');
+    } else {
+      await addDoc(col(db, 'scripts'), data);
+      showToast('✅ Script adicionado para todos!');
+    }
+    closeOverlay('scriptFormOverlay');
+  } catch(e) { showToast('❌ Erro ao salvar: ' + e.message); }
+}
+
+// ===================== DELETE =====================
+function openDelete(id) {
+  const s = scripts.find(x => x.id === id);
+  if (!s) return;
+  deleteTarget = id;
+  document.getElementById('deleteScriptName').textContent = '"' + s.name + '"';
+  openOverlay('deleteOverlay');
+}
+
+async function confirmDelete() {
+  try {
+    await deleteDoc(docRef(db, 'scripts', deleteTarget));
+    closeOverlay('deleteOverlay');
+    showToast('🗑️ Script excluído');
+  } catch(e) { showToast('❌ Erro ao excluir'); }
+}
+
+// ===================== VIEW =====================
+function openView(id) {
+  const s = scripts.find(x => x.id === id);
+  if (!s) return;
+  document.getElementById('viewName').textContent = s.name;
+  document.getElementById('viewGame').textContent = (s.game || 'Script') + (s.version ? ' · ' + s.version : '');
+  document.getElementById('viewDesc').textContent = s.desc || 'Sem descrição.';
+  document.getElementById('viewCode').textContent = s.code;
+  currentViewCode = s.code;
+  openOverlay('scriptViewOverlay');
+}
+
+function copyViewCode() { copyText(currentViewCode); showToast('📋 Script copiado!'); }
+
+function quickCopy(id) {
+  const s = scripts.find(x => x.id === id);
+  if (!s) return;
+  copyText(s.code);
+  const btn = document.getElementById('copybtn-' + id);
+  if (btn) { btn.textContent = '✓ Copiado'; btn.classList.add('copied'); setTimeout(() => { btn.textContent = 'Copiar'; btn.classList.remove('copied'); }, 2000); }
+  showToast('📋 Script copiado!');
+}
+
+function copyText(text) {
+  if (navigator.clipboard) { navigator.clipboard.writeText(text); }
+  else { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); }
+}
+
+// ===================== OVERLAY =====================
+function openOverlay(id) { document.getElementById(id).classList.add('active'); }
+function closeOverlay(id) { document.getElementById(id).classList.remove('active'); }
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') ['loginOverlay','scriptFormOverlay','scriptViewOverlay','deleteOverlay'].forEach(id => document.getElementById(id).classList.remove('active'));
+});
+
+// ===================== TOAST =====================
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>
